@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+// BrotherQLRaster builds the raster data stream for Brother QL printers.
 type BrotherQLRaster struct {
 	Model              Model
 	Data               bytes.Buffer
@@ -17,14 +18,14 @@ type BrotherQLRaster struct {
 	ExceptionOnWarning bool
 
 	// Media properties
-	mtype   *byte
-	mwidth  *byte
-	mlength *byte
+	mtype    *byte
+	mwidth   *byte
+	mlength  *byte
 	pquality bool
 }
 
-func NewBrotherQLRaster(modelId string) (*BrotherQLRaster, error) {
-	m, ok := GetModel(modelId)
+func newBrotherQLRaster(modelId string) (*BrotherQLRaster, error) {
+	m, ok := getModel(modelId)
 	if !ok {
 		return nil, fmt.Errorf("unknown model: %s", modelId)
 	}
@@ -35,16 +36,16 @@ func NewBrotherQLRaster(modelId string) (*BrotherQLRaster, error) {
 	}, nil
 }
 
-func (r *BrotherQLRaster) AddInitialize() {
+func (r *BrotherQLRaster) addInitialize() {
 	r.pageNumber = 0
 	r.Data.Write([]byte{0x1B, 0x40}) // ESC @
 }
 
-func (r *BrotherQLRaster) AddStatusInformation() {
+func (r *BrotherQLRaster) addStatusInformation() {
 	r.Data.Write([]byte{0x1B, 0x69, 0x53}) // ESC i S
 }
 
-func (r *BrotherQLRaster) AddSwitchMode() {
+func (r *BrotherQLRaster) addSwitchMode() {
 	if !r.Model.ModeSetting {
 		r.warn("Trying to switch the operating mode on a printer that doesn't support the command.")
 		return
@@ -52,18 +53,18 @@ func (r *BrotherQLRaster) AddSwitchMode() {
 	r.Data.Write([]byte{0x1B, 0x69, 0x61, 0x01}) // ESC i a
 }
 
-func (r *BrotherQLRaster) AddInvalidate() {
+func (r *BrotherQLRaster) addInvalidate() {
 	r.Data.Write(make([]byte, r.Model.NumInvalidateBytes))
 }
 
-func (r *BrotherQLRaster) SetMedia(mtype, width, length byte, quality bool) {
+func (r *BrotherQLRaster) setMedia(mtype, width, length byte, quality bool) {
 	r.mtype = &mtype
 	r.mwidth = &width
 	r.mlength = &length
 	r.pquality = quality
 }
 
-func (r *BrotherQLRaster) AddMediaAndQuality(rnumber uint32) {
+func (r *BrotherQLRaster) addMediaAndQuality(rnumber uint32) {
 	r.Data.Write([]byte{0x1B, 0x69, 0x7A})
 
 	validFlags := byte(0x80)
@@ -107,7 +108,7 @@ func (r *BrotherQLRaster) AddMediaAndQuality(rnumber uint32) {
 	r.Data.WriteByte(0)
 }
 
-func (r *BrotherQLRaster) AddAutocut(autocut bool) {
+func (r *BrotherQLRaster) addAutocut(autocut bool) {
 	if !r.Model.Cutting {
 		r.warn("Trying to call AddAutocut with a printer that doesn't support it")
 		return
@@ -120,7 +121,7 @@ func (r *BrotherQLRaster) AddAutocut(autocut bool) {
 	r.Data.WriteByte(val)
 }
 
-func (r *BrotherQLRaster) AddCutEvery(n byte) {
+func (r *BrotherQLRaster) addCutEvery(n byte) {
 	if !r.Model.Cutting {
 		r.warn("Trying to call AddCutEvery with a printer that doesn't support it")
 		return
@@ -129,7 +130,7 @@ func (r *BrotherQLRaster) AddCutEvery(n byte) {
 	r.Data.WriteByte(n)
 }
 
-func (r *BrotherQLRaster) AddExpandedMode() {
+func (r *BrotherQLRaster) addExpandedMode() {
 	if !r.Model.ExpandedMode {
 		r.warn("Trying to set expanded mode on a printer that doesn't support it")
 		return
@@ -148,12 +149,12 @@ func (r *BrotherQLRaster) AddExpandedMode() {
 	r.Data.WriteByte(flags)
 }
 
-func (r *BrotherQLRaster) AddMargins(dots uint16) {
+func (r *BrotherQLRaster) addMargins(dots uint16) {
 	r.Data.Write([]byte{0x1B, 0x69, 0x64})
 	binary.Write(&r.Data, binary.LittleEndian, dots)
 }
 
-func (r *BrotherQLRaster) AddCompression(enable bool) {
+func (r *BrotherQLRaster) addCompression(enable bool) {
 	if !r.Model.Compression {
 		r.warn("Trying to set compression on a printer that doesn't support it")
 		return
@@ -167,7 +168,7 @@ func (r *BrotherQLRaster) AddCompression(enable bool) {
 	r.Data.WriteByte(val)
 }
 
-func (r *BrotherQLRaster) AddPrint(lastPage bool) {
+func (r *BrotherQLRaster) addPrint(lastPage bool) {
 	if lastPage {
 		r.Data.WriteByte(0x1A) // EOF
 	} else {
@@ -175,7 +176,7 @@ func (r *BrotherQLRaster) AddPrint(lastPage bool) {
 	}
 }
 
-func (r *BrotherQLRaster) GetPixelWidth() int {
+func (r *BrotherQLRaster) getPixelWidth() int {
 	return r.Model.NumberBytesPerRow * 8
 }
 

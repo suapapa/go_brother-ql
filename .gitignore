@@ -1,4 +1,5 @@
 .gitignore
+.DS_Store
 .ref/
 .example_labels/
 brother_ql

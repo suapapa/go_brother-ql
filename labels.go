@@ -1,30 +1,39 @@
 package brother_ql
 
+// FormFactor specifies the type of label media.
 type FormFactor int
 
 const (
+	// DieCut represents die-cut labels with fixed size.
 	DieCut FormFactor = iota + 1
+	// Endless represents continuous tape labels.
 	Endless
+	// RoundDieCut represents round die-cut labels.
 	RoundDieCut
+	// PtouchEndless represents P-touch continuous tape labels.
 	PtouchEndless
 )
 
+// Color specifies the color capability of the label.
 type Color int
 
 const (
+	// BlackWhite is standard black on white printing.
 	BlackWhite Color = iota
+	// BlackRedWhite is black and red on white printing (two-color).
 	BlackRedWhite
 )
 
+// Label represents the specifications of a label type.
 type Label struct {
-	Identifier         string
-	TapeSize           [2]int // width, length
-	FormFactor        FormFactor
-	DotsTotal          [2]int
-	DotsPrintable      [2]int
-	OffsetR           int
-	FeedMargin        int
-	RestrictedToModels []string
+	Identifier         string // e.g., "62", "29x90"
+	TapeSize           [2]int // width, length in mm
+	FormFactor         FormFactor
+	DotsTotal          [2]int   // total dots [width, length]
+	DotsPrintable      [2]int   // printable dots [width, length]
+	OffsetR            int      // right margin alignment offset
+	FeedMargin         int      // feed margin in dots
+	RestrictedToModels []string // allowed models, if any
 	Color              Color
 }
 
@@ -32,7 +41,7 @@ func defaultLabel(id string, size [2]int, ff FormFactor, total [2]int, printable
 	return Label{
 		Identifier:    id,
 		TapeSize:      size,
-		FormFactor:   ff,
+		FormFactor:    ff,
 		DotsTotal:     total,
 		DotsPrintable: printable,
 		OffsetR:       offsetR,
@@ -73,13 +82,14 @@ func initLabels() []Label {
 	}
 }
 
+// AllLabels contains all predefined label configurations.
 var AllLabels []Label
 
 func init() {
 	AllLabels = initLabels()
 }
 
-func GetLabel(id string) (Label, bool) {
+func getLabel(id string) (Label, bool) {
 	for _, l := range AllLabels {
 		if l.Identifier == id {
 			return l, true

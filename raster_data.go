@@ -8,7 +8,7 @@ import (
 	"image/color"
 )
 
-func (r *BrotherQLRaster) AddRasterData(images ...image.Image) error {
+func (r *BrotherQLRaster) addRasterData(images ...image.Image) error {
 	var frames [][]byte
 	var width, height int
 
@@ -18,8 +18,8 @@ func (r *BrotherQLRaster) AddRasterData(images ...image.Image) error {
 		height = bounds.Dy()
 	}
 
-	if width != r.GetPixelWidth() {
-		return fmt.Errorf("wrong pixel width: %d, expected %d", width, r.GetPixelWidth())
+	if width != r.getPixelWidth() {
+		return fmt.Errorf("wrong pixel width: %d, expected %d", width, r.getPixelWidth())
 	}
 
 	for _, img := range images {
@@ -68,7 +68,7 @@ func (r *BrotherQLRaster) AddRasterData(images ...image.Image) error {
 		for i, frame := range frames {
 			row := frame[start : start+rowLen]
 			if r.compression {
-				row = Packbits(row)
+				row = packbits(row)
 			}
 			translen := len(row)
 

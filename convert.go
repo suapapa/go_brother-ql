@@ -10,6 +10,8 @@ import (
 	"github.com/lestrrat-go/dither"
 )
 
+// ConvertOptions contains settings for converting images into raster data
+// suitable for the Brother QL printer.
 type ConvertOptions struct {
 	Cut       bool
 	Dither    bool
@@ -22,8 +24,8 @@ type ConvertOptions struct {
 	DitherAlgo string // "atkinson", "burkes", "stucki", "sierra2", "sierra3", "sierralite", "floyd_steinberg"
 }
 
-func Convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts ConvertOptions) ([]byte, error) {
-	labelSpecs, ok := GetLabel(labelId)
+func convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts ConvertOptions) ([]byte, error) {
+	labelSpecs, ok := getLabel(labelId)
 	if !ok {
 		return nil, fmt.Errorf("unknown label size: %s", labelId)
 	}
@@ -31,7 +33,7 @@ func Convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts Co
 	dotsPrintable := labelSpecs.DotsPrintable
 	rightMarginDots := labelSpecs.OffsetR
 	rightMarginDots += qlr.Model.AdditionalOffsetR
-	devicePixelWidth := qlr.GetPixelWidth()
+	devicePixelWidth := qlr.getPixelWidth()
 
 	if opts.Threshold == 0 {
 		opts.Threshold = 70.0 // Default
@@ -41,10 +43,10 @@ func Convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts Co
 		return nil, fmt.Errorf("printing in red is not supported with the selected model")
 	}
 
-	qlr.AddSwitchMode()
-	qlr.AddInvalidate()
-	qlr.AddInitialize()
-	qlr.AddSwitchMode()
+	qlr.addSwitchMode()
+	qlr.addInvalidate()
+	qlr.addInitialize()
+	qlr.addSwitchMode()
 
 	for _, im := range images {
 		// Convert to Gray or RGB is handled by imaging
@@ -107,33 +109,33 @@ func Convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts Co
 			binIm = binarizeImage(processedIm, opts.Threshold)
 		}
 
-		qlr.AddStatusInformation()
+		qlr.addStatusInformation()
 		if labelSpecs.FormFactor == DieCut || labelSpecs.FormFactor == RoundDieCut {
-			qlr.SetMedia(0x0B, byte(labelSpecs.TapeSize[0]), byte(labelSpecs.TapeSize[1]), opts.Hq)
+			qlr.setMedia(0x0B, byte(labelSpecs.TapeSize[0]), byte(labelSpecs.TapeSize[1]), opts.Hq)
 		} else if labelSpecs.FormFactor == Endless {
-			qlr.SetMedia(0x0A, byte(labelSpecs.TapeSize[0]), 0, opts.Hq)
+			qlr.setMedia(0x0A, byte(labelSpecs.TapeSize[0]), 0, opts.Hq)
 		} else if labelSpecs.FormFactor == PtouchEndless {
-			qlr.SetMedia(0x00, byte(labelSpecs.TapeSize[0]), 0, opts.Hq)
+			qlr.setMedia(0x00, byte(labelSpecs.TapeSize[0]), 0, opts.Hq)
 		}
-		qlr.AddMediaAndQuality(uint32(binIm.Bounds().Dy()))
+		qlr.addMediaAndQuality(uint32(binIm.Bounds().Dy()))
 
 		if opts.Cut && qlr.Model.Cutting {
-			qlr.AddAutocut(true)
-			qlr.AddCutEvery(1)
+			qlr.addAutocut(true)
+			qlr.addCutEvery(1)
 		}
 
 		qlr.CutAtEnd = opts.Cut
 		qlr.Dpi600 = opts.Dpi600
 		qlr.TwoColorPrinting = opts.Red
-		qlr.AddExpandedMode()
+		qlr.addExpandedMode()
 
-		qlr.AddMargins(uint16(labelSpecs.FeedMargin))
+		qlr.addMargins(uint16(labelSpecs.FeedMargin))
 		if opts.Compress && qlr.Model.Compression {
-			qlr.AddCompression(true)
+			qlr.addCompression(true)
 		}
 
-		qlr.AddRasterData(binIm)
-		qlr.AddPrint(true) // Wait, for multiples images we might need false then true on last
+		qlr.addRasterData(binIm)
+		qlr.addPrint(true) // Wait, for multiples images we might need false then true on last
 	}
 
 	return qlr.Data.Bytes(), nil

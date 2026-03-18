@@ -10,6 +10,10 @@ The code is partitioned across a small set of files in the main package with a s
     - Predefined list of supported Printer models and Label types.
     - **To add support for a new model or label**: Simply append a new item in the `initModels()` or `initLabels()` functions.
 
+- **`printer.go`**:
+    - High-level API structure containing `LabelPrinter` and `PrintOptions`.
+    - Handles managing connections and sending formatted image streams.
+
 - **`raster.go` / `raster_data.go`**:
     - Implements forming the raster instruction bytecode in `BrotherQLRaster`.
     - `AddRasterData` flips the image left-to-right and packs 1-bit pixels into bytes, most-significant bit first.
@@ -26,6 +30,9 @@ The code is partitioned across a small set of files in the main package with a s
     - Wrap connection addresses into pure generic `io.ReadWriteCloser` endpoints.
     - Go's building blocks (e.g. `net.Conn`, `*os.File`) satisfy this with no extra boilerplate.
 
+- **`cmd/brother_ql/`**:
+    - CLI wrapper replicating the original index interface command behaviors using standard Go options.
+
 ---
 
 ## 🛠 Guidelines for AI Agents
@@ -38,3 +45,6 @@ The code is partitioned across a small set of files in the main package with a s
 
 3. **Backend limits**:
     - Respect the restriction to only allow simple byte write-triggers to standard endpoints. Do not enforce heavier dependencies that the Python library had (libusb).
+
+4. **Maintain Documentation**:
+    - Whenever you make modifications to the code, check if high-level structures, CLI behaviors, or backend supports have shifted. If so, you **MUST** update both `AGENT.md` and `README.md` to reflect those changes instantly to keep context up-to-date for future workflows.

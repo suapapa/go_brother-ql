@@ -1,6 +1,6 @@
 package brother_ql
 
-func Packbits(input []byte) []byte {
+func packbits(input []byte) []byte {
 	var output []byte
 	i := 0
 	for i < len(input) {

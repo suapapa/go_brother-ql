@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// Connect establishes a connection to the printer based on the backend type.
+// Supported backend types are "network" (e.g., "192.168.1.100" or "tcp://192.168.1.100:9100")
+// and "linux_kernel" (e.g., "/dev/usb/lp0").
 func Connect(backendType, address string) (io.ReadWriteCloser, error) {
 	switch backendType {
 	case "network":

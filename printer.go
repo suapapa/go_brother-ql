@@ -37,7 +37,7 @@ type LabelPrinter struct {
 
 // NewLabelPrinter creates a new LabelPrinter.
 func NewLabelPrinter(model, backend, id string) (*LabelPrinter, error) {
-	if _, ok := GetModel(model); !ok {
+	if _, ok := getModel(model); !ok {
 		return nil, fmt.Errorf("unknown model: %s", model)
 	}
 	return &LabelPrinter{
@@ -49,12 +49,12 @@ func NewLabelPrinter(model, backend, id string) (*LabelPrinter, error) {
 
 // Print converts and sends the images to the printer.
 func (p *LabelPrinter) Print(images []image.Image, opts PrintOptions) error {
-	qlr, err := NewBrotherQLRaster(p.model)
+	qlr, err := newBrotherQLRaster(p.model)
 	if err != nil {
 		return err
 	}
 
-	data, err := Convert(qlr, images, opts.Label, opts.ConvertOptions)
+	data, err := convert(qlr, images, opts.Label, opts.ConvertOptions)
 	if err != nil {
 		return err
 	}
