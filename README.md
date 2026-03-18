@@ -1,5 +1,7 @@
 # brother-ql : Go pkg for Brother QL label printers
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/suapapa/go_brother-ql.svg)](https://pkg.go.dev/github.com/suapapa/go_brother-ql)
+
 Go port of the popular [brother_ql](https://github.com/pklaus/brother_ql) Python package for creating and sending raster instructions to Brother QL-series label printers.
 
 ## Features
