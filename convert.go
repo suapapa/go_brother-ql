@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
 	"log"
 
 	"github.com/disintegration/imaging"
+	"github.com/lestrrat-go/dither"
 )
 
 type ConvertOptions struct {
@@ -19,6 +19,7 @@ type ConvertOptions struct {
 	Dpi600    bool
 	Hq        bool
 	Threshold float64
+	DitherAlgo string // "atkinson", "burkes", "stucki", "sierra2", "sierra3", "sierralite", "floyd_steinberg"
 }
 
 func Convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts ConvertOptions) ([]byte, error) {
@@ -101,7 +102,7 @@ func Convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts Co
 
 		var binIm *image.Gray
 		if opts.Dither {
-			binIm = ditherImage(processedIm)
+			binIm = ditherImage(processedIm, opts.DitherAlgo)
 		} else {
 			binIm = binarizeImage(processedIm, opts.Threshold)
 		}
@@ -156,7 +157,7 @@ func binarizeImage(img image.Image, threshold float64) *image.Gray {
 	limit := uint8(threshold / 100.0 * 255.0)
 	for y := gray.Bounds().Min.Y; y < gray.Bounds().Max.Y; y++ {
 		for x := gray.Bounds().Min.X; x < gray.Bounds().Max.X; x++ {
-			c := gray.At(x, y).(color.Gray)
+			c := color.GrayModel.Convert(gray.At(x, y)).(color.Gray)
 			if c.Y <= limit {
 				res.SetGray(x, y, color.Gray{Y: 255}) // Dot
 			} else {
@@ -167,23 +168,40 @@ func binarizeImage(img image.Image, threshold float64) *image.Gray {
 	return res
 }
 
-func ditherImage(img image.Image) *image.Gray {
-	dst := image.NewPaletted(img.Bounds(), []color.Color{color.Gray{0}, color.Gray{255}})
-	draw.FloydSteinberg.Draw(dst, dst.Bounds(), img, image.Point{})
-	res := image.NewGray(dst.Bounds())
-	for y := dst.Bounds().Min.Y; y < dst.Bounds().Max.Y; y++ {
-		for x := dst.Bounds().Min.X; x < dst.Bounds().Max.X; x++ {
-			c := dst.At(x, y)
-			// dst.At returns color from palette.
-			// Index 0 is color.Gray{0} (Black) -> Dot
-			// Index 1 is color.Gray{255} (White) -> No Dot
-			r, _, _, _ := c.RGBA()
-			if r < 32768 { // Black
-				res.SetGray(x, y, color.Gray{Y: 255})
+func ditherImage(img image.Image, algo string) *image.Gray {
+	var m dither.Matrixer
+	switch algo {
+	case "atkinson":
+		m = dither.Atkinson
+	case "burkes":
+		m = dither.Burkes
+	case "stucki":
+		m = dither.Stucki
+	case "sierra2":
+		m = dither.Sierra2
+	case "sierra3":
+		m = dither.Sierra3
+	case "sierralite":
+		m = dither.SierraLite
+	case "floyd_steinberg", "floyd-steinberg", "":
+		m = dither.FloydSteinberg
+	default:
+		m = dither.FloydSteinberg
+	}
+
+	res := dither.Monochrome(m, img, 1.0)
+	g := res.(*image.Gray)
+
+	inverted := image.NewGray(g.Bounds())
+	for y := g.Bounds().Min.Y; y < g.Bounds().Max.Y; y++ {
+		for x := g.Bounds().Min.X; x < g.Bounds().Max.X; x++ {
+			c := g.GrayAt(x, y).Y
+			if c < 128 { // Black
+				inverted.SetGray(x, y, color.Gray{Y: 255})
 			} else {
-				res.SetGray(x, y, color.Gray{Y: 0})
+				inverted.SetGray(x, y, color.Gray{Y: 0})
 			}
 		}
 	}
-	return res
+	return inverted
 }

@@ -26,7 +26,7 @@ func Connect(backendType, address string) (io.ReadWriteCloser, error) {
 		if strings.HasPrefix(address, "file://") {
 			address = address[7:]
 		}
-		f, err := os.OpenFile(address, os.O_RDWR, 0)
+		f, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			return nil, err
 		}

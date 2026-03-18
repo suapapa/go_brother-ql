@@ -64,8 +64,6 @@ func (r *BrotherQLRaster) SetMedia(mtype, width, length byte, quality bool) {
 }
 
 func (r *BrotherQLRaster) AddMediaAndQuality(rnumber uint32) {
-	r.Data.Write([]byte{0x1B, 0x69, 0x72, 0x7A}) // Wait, python says 1B 69 7A. Oh, 1B 69 7A is ESC i z.
-	// Let's re-read Python code: self.data += b'\x1B\x69\x7A'
 	r.Data.Write([]byte{0x1B, 0x69, 0x7A})
 
 	validFlags := byte(0x80)

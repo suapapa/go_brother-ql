@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	github.com/disintegration/imaging v1.6.2
+	github.com/lestrrat-go/dither v0.0.0-20180426220553-2a6e1152a49e
 	github.com/spf13/cobra v1.10.2
 )
 

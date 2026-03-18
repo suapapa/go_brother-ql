@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/suapapa/go_brother-ql"
@@ -83,13 +84,13 @@ func main() {
 		Use:   "env",
 		Short: "print debug info about running environment",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("\n##################\n")
+			fmt.Print("\n##################\n\n")
 			fmt.Println("Information about the running environment of brother_ql.")
 			fmt.Println("About the computer:")
 			fmt.Printf("  * OS: %s\n", runtime.GOOS)
 			fmt.Printf("  * Arch: %s\n", runtime.GOARCH)
 			fmt.Printf("  * Go Version: %s\n", runtime.Version())
-			fmt.Println("\n##################\n")
+			fmt.Print("\n##################\n\n")
 		},
 	}
 	infoCmd.AddCommand(envCmd)
@@ -99,6 +100,7 @@ func main() {
 	var rotate string
 	var threshold float64
 	var dither bool
+	var ditherAlgo string
 	var compress bool
 	var red bool
 	var dpi600 bool
@@ -110,13 +112,14 @@ func main() {
 		Short: "Print a label",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			runPrint(args, labelArg, rotate, threshold, dither, compress, red, dpi600, hq, noCut)
+			runPrint(args, labelArg, rotate, threshold, dither, ditherAlgo, compress, red, dpi600, hq, noCut)
 		},
 	}
 	printCmd.Flags().StringVarP(&labelArg, "label", "l", os.Getenv("BROTHER_QL_LABEL"), "The label size")
 	printCmd.Flags().StringVarP(&rotate, "rotate", "r", "auto", "Rotate image by degrees (0, 90, 180, 270, auto)")
 	printCmd.Flags().Float64VarP(&threshold, "threshold", "t", 70.0, "Threshold value (%) to discriminate black & white")
 	printCmd.Flags().BoolVarP(&dither, "dither", "d", false, "Enable dithering")
+	printCmd.Flags().StringVar(&ditherAlgo, "dither-algo", "floyd_steinberg", "Dithering algorithm (atkinson, burkes, stucki, sierra2, sierra3, sierralite, floyd_steinberg)")
 	printCmd.Flags().BoolVarP(&compress, "compress", "c", false, "Enable compression")
 	printCmd.Flags().BoolVar(&red, "red", false, "Create label for black/red/white tape")
 	printCmd.Flags().BoolVar(&dpi600, "600dpi", false, "Print with 600x300 dpi available on some models")
@@ -151,7 +154,7 @@ func discoverAndList(backend string) {
 	}
 }
 
-func runPrint(images []string, label, rotate string, threshold float64, dither, compress, red, dpi600, hq, noCut bool) {
+func runPrint(images []string, label, rotate string, threshold float64, dither bool, ditherAlgo string, compress, red, dpi600, hq, noCut bool) {
 	qlr, err := brother_ql.NewBrotherQLRaster(model)
 	if err != nil {
 		fmt.Println("Error creating rasterizer:", err)
@@ -177,6 +180,7 @@ func runPrint(images []string, label, rotate string, threshold float64, dither, 
 	opts := brother_ql.ConvertOptions{
 		Cut:       !noCut,
 		Dither:    dither,
+		DitherAlgo: ditherAlgo,
 		Compress:  compress,
 		Red:       red,
 		Rotate:    rotate,
@@ -208,6 +212,13 @@ func runPrint(images []string, label, rotate string, threshold float64, dither, 
 		fmt.Println("Error writing data to printer:", err)
 		return
 	}
+	if f, ok := conn.(*os.File); ok {
+		f.Sync()
+	}
+	// Give the printer some time to process or buffer the cut command
+	// before the file descriptor is closed.
+	time.Sleep(500 * time.Millisecond)
+
 	if debug {
 		fmt.Printf("Wrote %d bytes to printer\n", n)
 	}
