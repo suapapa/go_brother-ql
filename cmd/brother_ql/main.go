@@ -9,10 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/suapapa/go_brother-ql"
+	brother_ql "github.com/suapapa/go_brother-ql"
 	"github.com/suapapa/go_brother-ql/backends"
 )
 
@@ -178,15 +177,15 @@ func runPrint(images []string, label, rotate string, threshold float64, dither b
 	}
 
 	opts := brother_ql.ConvertOptions{
-		Cut:       !noCut,
-		Dither:    dither,
+		Cut:        !noCut,
+		Dither:     dither,
 		DitherAlgo: ditherAlgo,
-		Compress:  compress,
-		Red:       red,
-		Rotate:    rotate,
-		Dpi600:    dpi600,
-		Hq:        hq,
-		Threshold: threshold,
+		Compress:   compress,
+		Red:        red,
+		Rotate:     rotate,
+		Dpi600:     dpi600,
+		Hq:         hq,
+		Threshold:  threshold,
 	}
 
 	data, err := brother_ql.Convert(qlr, parsedImages, label, opts)
@@ -215,9 +214,6 @@ func runPrint(images []string, label, rotate string, threshold float64, dither b
 	if f, ok := conn.(*os.File); ok {
 		f.Sync()
 	}
-	// Give the printer some time to process or buffer the cut command
-	// before the file descriptor is closed.
-	time.Sleep(500 * time.Millisecond)
 
 	if debug {
 		fmt.Printf("Wrote %d bytes to printer\n", n)

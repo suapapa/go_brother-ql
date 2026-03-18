@@ -11,9 +11,7 @@ import (
 func Connect(backendType, address string) (io.ReadWriteCloser, error) {
 	switch backendType {
 	case "network":
-		if strings.HasPrefix(address, "tcp://") {
-			address = address[6:]
-		}
+		address = strings.TrimPrefix(address, "tcp://")
 		if !strings.Contains(address, ":") {
 			address += ":9100"
 		}
@@ -23,9 +21,7 @@ func Connect(backendType, address string) (io.ReadWriteCloser, error) {
 		}
 		return conn, nil
 	case "linux_kernel":
-		if strings.HasPrefix(address, "file://") {
-			address = address[7:]
-		}
+		address = strings.TrimPrefix(address, "file://")
 		f, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			return nil, err
