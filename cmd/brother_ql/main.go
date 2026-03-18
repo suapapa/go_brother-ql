@@ -12,7 +12,6 @@ import (
 
 	"github.com/spf13/cobra"
 	brother_ql "github.com/suapapa/go_brother-ql"
-	"github.com/suapapa/go_brother-ql/backends"
 )
 
 var (
@@ -33,8 +32,8 @@ func main() {
 		},
 	}
 
-	rootCmd.PersistentFlags().StringVarP(&backend, "backend", "b", os.Getenv("BROTHER_QL_BACKEND"), "Choices: network, linux_kernel")
 	rootCmd.PersistentFlags().StringVarP(&model, "model", "m", os.Getenv("BROTHER_QL_MODEL"), "Choices: QL-500, QL-550, ...")
+	rootCmd.PersistentFlags().StringVarP(&backend, "backend", "b", os.Getenv("BROTHER_QL_BACKEND"), "Choices: network, linux_kernel")
 	rootCmd.PersistentFlags().StringVarP(&printer, "printer", "p", os.Getenv("BROTHER_QL_PRINTER"), "The identifier for the printer")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug mode")
 
@@ -154,12 +153,6 @@ func discoverAndList(backend string) {
 }
 
 func runPrint(images []string, label, rotate string, threshold float64, dither bool, ditherAlgo string, compress, red, dpi600, hq, noCut bool) {
-	qlr, err := brother_ql.NewBrotherQLRaster(model)
-	if err != nil {
-		fmt.Println("Error creating rasterizer:", err)
-		return
-	}
-
 	var parsedImages []image.Image
 	for _, imgPath := range images {
 		f, err := os.Open(imgPath)
@@ -176,46 +169,38 @@ func runPrint(images []string, label, rotate string, threshold float64, dither b
 		parsedImages = append(parsedImages, img)
 	}
 
-	opts := brother_ql.ConvertOptions{
-		Cut:        !noCut,
-		Dither:     dither,
-		DitherAlgo: ditherAlgo,
-		Compress:   compress,
-		Red:        red,
-		Rotate:     rotate,
-		Dpi600:     dpi600,
-		Hq:         hq,
-		Threshold:  threshold,
-	}
-
-	data, err := brother_ql.Convert(qlr, parsedImages, label, opts)
-	if err != nil {
-		fmt.Println("Error converting images:", err)
-		return
-	}
-
 	if printer == "" {
 		fmt.Println("Error: --printer flag is required to send to device")
 		return
 	}
 
-	conn, err := backends.Connect(backend, printer)
+	brd, err := brother_ql.NewLabelPrinter(model, backend, printer)
 	if err != nil {
-		fmt.Printf("Error connecting to backend (%s:%s): %v\n", backend, printer, err)
+		fmt.Println("Error creating printer:", err)
 		return
 	}
-	defer conn.Close()
 
-	n, err := conn.Write(data)
-	if err != nil {
-		fmt.Println("Error writing data to printer:", err)
-		return
+	opts := brother_ql.PrintOptions{
+		Label: label,
+		ConvertOptions: brother_ql.ConvertOptions{
+			Cut:        !noCut,
+			Dither:     dither,
+			DitherAlgo: ditherAlgo,
+			Compress:   compress,
+			Red:        red,
+			Rotate:     rotate,
+			Dpi600:     dpi600,
+			Hq:         hq,
+			Threshold:  threshold,
+		},
 	}
-	if f, ok := conn.(*os.File); ok {
-		f.Sync()
+
+	if err := brd.Print(parsedImages, opts); err != nil {
+		fmt.Println("Error printing:", err)
+		return
 	}
 
 	if debug {
-		fmt.Printf("Wrote %d bytes to printer\n", n)
+		fmt.Println("Label printed successfully")
 	}
 }

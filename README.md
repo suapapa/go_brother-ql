@@ -77,39 +77,38 @@ package main
 import (
 	"fmt"
 	"image"
+	_ "image/png" // import image formats as needed
 	"os"
 
 	"github.com/suapapa/go_brother-ql"
-	"github.com/suapapa/go_brother-ql/backends"
 )
 
 func main() {
-	// 1. Create rasterizer
-	qlr, _ := brother_ql.NewBrotherQLRaster("QL-820NWB")
-
-	// 2. Load image
-	f, _ := os.Open("label.png")
-	defer f.Close()
-	img, _, _ := image.Decode(f)
-
-	// 3. Setup conversion options
-	opts := brother_ql.ConvertOptions{
-		Cut:      true,
-		Compress: true,
-		Rotate:   "auto",
+	// 1. Load image
+	f, err := os.Open("label.png")
+	if err != nil {
+		panic(err)
 	}
-
-	// 4. Create raster stream
-	data, err := brother_ql.Convert(qlr, []image.Image{img}, "62", opts)
+	defer f.Close()
+	img, _, err := image.Decode(f)
 	if err != nil {
 		panic(err)
 	}
 
-	// 5. Connect and send
-	conn, _ := backends.Connect("network", "192.168.1.50")
-	defer conn.Close()
+	// 2. Create printer
+	printer, err := brother_ql.NewLabelPrinter("QL-820NWB", "network", "192.168.1.50")
+	if err != nil {
+		panic(err)
+	}
 
-	conn.Write(data)
+	// 3. Setup print options
+	opts := brother_ql.NewDefaultOptions("62")
+
+	// 4. Print images
+	err = printer.Print([]image.Image{img}, opts)
+	if err != nil {
+		panic(err)
+	}
 }
 ```
 
