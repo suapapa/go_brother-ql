@@ -102,6 +102,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer printer.Close()
 
 	// 3. Setup print options
 	opts := brother_ql.NewDefaultOptions("62")

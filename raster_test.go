@@ -103,18 +103,25 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	r.Data.Reset()
 }
 
-func TestBrotherQLRaster_Warnings(t *testing.T) {
+
+func TestBrotherQLRaster_OnWarning(t *testing.T) {
 	r, err := newBrotherQLRaster("QL-500")
 	if err != nil {
 		t.Fatalf("failed to create raster: %v", err)
 	}
-	r.ExceptionOnWarning = true
 
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("expected panic on unsupported compression")
-		}
-	}()
+	var warningMsg string
+	r.onWarning = func(msg string) {
+		warningMsg = msg
+	}
 
 	r.addCompression(true)
+
+	if warningMsg == "" {
+		t.Fatalf("expected warning callback to be called")
+	}
+	wantMsg := "Trying to set compression on a printer that doesn't support it"
+	if warningMsg != wantMsg {
+		t.Errorf("warningMsg = %q, want %q", warningMsg, wantMsg)
+	}
 }

@@ -179,6 +179,7 @@ func runPrint(images []string, label, rotate string, threshold float64, dither b
 		fmt.Println("Error creating printer:", err)
 		return
 	}
+	defer brd.Close()
 
 	opts := brother_ql.PrintOptions{
 		Label: label,

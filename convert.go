@@ -13,15 +13,16 @@ import (
 // ConvertOptions contains settings for converting images into raster data
 // suitable for the Brother QL printer.
 type ConvertOptions struct {
-	Cut       bool
-	Dither    bool
-	Compress  bool
-	Red       bool
-	Rotate    string // "auto", "0", "90", "180", "270"
-	Dpi600    bool
-	Hq        bool
-	Threshold float64
+	Cut        bool
+	Dither     bool
+	Compress   bool
+	Red        bool
+	Rotate     string // "auto", "0", "90", "180", "270"
+	Dpi600     bool
+	Hq         bool
+	Threshold  float64
 	DitherAlgo string // "atkinson", "burkes", "stucki", "sierra2", "sierra3", "sierralite", "floyd_steinberg"
+	OnWarning  func(string)
 }
 
 func convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts ConvertOptions) ([]byte, error) {
@@ -42,6 +43,8 @@ func convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts Co
 	if opts.Red && !qlr.Model.TwoColor {
 		return nil, fmt.Errorf("printing in red is not supported with the selected model")
 	}
+
+	qlr.onWarning = opts.OnWarning
 
 	qlr.addSwitchMode()
 	qlr.addInvalidate()

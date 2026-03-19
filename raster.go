@@ -8,20 +8,22 @@ import (
 
 // BrotherQLRaster builds the raster data stream for Brother QL printers.
 type BrotherQLRaster struct {
-	Model              Model
-	Data               bytes.Buffer
-	pageNumber         int
-	CutAtEnd           bool
-	Dpi600             bool
-	TwoColorPrinting   bool
-	compression        bool
-	ExceptionOnWarning bool
+	Model            Model
+	Data             bytes.Buffer
+	pageNumber       int
+	CutAtEnd         bool
+	Dpi600           bool
+	TwoColorPrinting bool
+	compression      bool
 
 	// Media properties
 	mtype    *byte
 	mwidth   *byte
 	mlength  *byte
 	pquality bool
+
+	// Callback function to report warnings
+	onWarning func(string)
 }
 
 func newBrotherQLRaster(modelId string) (*BrotherQLRaster, error) {
@@ -181,9 +183,10 @@ func (r *BrotherQLRaster) getPixelWidth() int {
 }
 
 func (r *BrotherQLRaster) warn(msg string) {
-	if r.ExceptionOnWarning {
-		panic(msg)
+	if r.onWarning != nil {
+		r.onWarning(msg)
 	} else {
-		// Log warning
+		// Do nothing
+		// fmt.Println("Warning: " + msg)
 	}
 }

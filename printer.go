@@ -3,6 +3,7 @@ package brother_ql
 import (
 	"fmt"
 	"image"
+	"io"
 	"os"
 	"time"
 
@@ -30,9 +31,8 @@ func NewDefaultOptions(label string) PrintOptions {
 
 // LabelPrinter manages connection and printing to a Brother QL printer.
 type LabelPrinter struct {
-	model   string
-	backend string
-	id      string
+	model string
+	conn  io.ReadWriteCloser
 }
 
 // NewLabelPrinter creates a new LabelPrinter.
@@ -40,11 +40,27 @@ func NewLabelPrinter(model, backend, id string) (*LabelPrinter, error) {
 	if _, ok := getModel(model); !ok {
 		return nil, fmt.Errorf("unknown model: %s", model)
 	}
+
+	conn, err := backends.Connect(backend, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to %s backend at %s: %v", backend, id, err)
+	}
+
 	return &LabelPrinter{
-		model:   model,
-		backend: backend,
-		id:      id,
+		model: model,
+		conn:  conn,
 	}, nil
+}
+
+// Close closes the connection to the printer.
+func (p *LabelPrinter) Close() error {
+	if p.conn != nil {
+		// Give the printer some time to process or buffer the cut command
+		// before the file descriptor is closed.
+		time.Sleep(500 * time.Millisecond)
+		return p.conn.Close()
+	}
+	return nil
 }
 
 // Print converts and sends the images to the printer.
@@ -59,23 +75,14 @@ func (p *LabelPrinter) Print(images []image.Image, opts PrintOptions) error {
 		return err
 	}
 
-	conn, err := backends.Connect(p.backend, p.id)
-	if err != nil {
-		return fmt.Errorf("failed to connect to %s backend at %s: %v", p.backend, p.id, err)
-	}
-	defer conn.Close()
-
-	_, err = conn.Write(data)
+	_, err = p.conn.Write(data)
 	if err != nil {
 		return fmt.Errorf("failed to write data to printer: %v", err)
 	}
 
-	if f, ok := conn.(*os.File); ok {
+	if f, ok := p.conn.(*os.File); ok {
 		f.Sync()
 	}
-	// Give the printer some time to process or buffer the cut command
-	// before the file descriptor is closed.
-	time.Sleep(500 * time.Millisecond)
 
 	return nil
 }
