@@ -31,8 +31,10 @@ func NewDefaultOptions(label string) PrintOptions {
 
 // LabelPrinter manages connection and printing to a Brother QL printer.
 type LabelPrinter struct {
-	model string
-	conn  io.ReadWriteCloser
+	model   string
+	backend string
+	id      string
+	conn    io.ReadWriteCloser
 }
 
 // NewLabelPrinter creates a new LabelPrinter.
@@ -47,10 +49,32 @@ func NewLabelPrinter(model, backend, id string) (*LabelPrinter, error) {
 	}
 
 	return &LabelPrinter{
-		model: model,
-		conn:  conn,
+		model:   model,
+		backend: backend,
+		id:      id,
+		conn:    conn,
 	}, nil
 }
+
+// IsLive checks if the printer connection is available.
+func (p *LabelPrinter) IsLive() bool {
+	return backends.IsLive(p.backend, p.id)
+}
+
+// Reconnect attempts to re-establish the connection to the printer.
+func (p *LabelPrinter) Reconnect() error {
+	if p.conn != nil {
+		p.conn.Close()
+	}
+
+	conn, err := backends.Connect(p.backend, p.id)
+	if err != nil {
+		return err
+	}
+	p.conn = conn
+	return nil
+}
+
 
 // Close closes the connection to the printer.
 func (p *LabelPrinter) Close() error {

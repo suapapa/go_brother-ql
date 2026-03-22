@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 // Connect establishes a connection to the printer based on the backend type.
@@ -25,7 +26,7 @@ func Connect(backendType, address string) (io.ReadWriteCloser, error) {
 		return conn, nil
 	case "linux_kernel":
 		address = strings.TrimPrefix(address, "file://")
-		f, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE, 0644)
+		f, err := os.OpenFile(address, os.O_RDWR, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -34,3 +35,29 @@ func Connect(backendType, address string) (io.ReadWriteCloser, error) {
 		return nil, fmt.Errorf("unsupported backend: %s", backendType)
 	}
 }
+
+// IsLive checks if the printer connection is available.
+func IsLive(backendType, address string) bool {
+	switch backendType {
+	case "network":
+		address = strings.TrimPrefix(address, "tcp://")
+		if !strings.Contains(address, ":") {
+			address += ":9100"
+		}
+		conn, err := net.DialTimeout("tcp", address, 2*time.Second)
+		if err != nil {
+			return false
+		}
+		conn.Close()
+		return true
+	case "linux_kernel":
+		address = strings.TrimPrefix(address, "file://")
+		if _, err := os.Stat(address); err != nil {
+			return false
+		}
+		return true
+	default:
+		return false
+	}
+}
+
