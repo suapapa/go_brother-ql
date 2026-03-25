@@ -52,9 +52,17 @@ func IsLive(backendType, address string) bool {
 		return true
 	case "linux_kernel":
 		address = strings.TrimPrefix(address, "file://")
-		if _, err := os.Stat(address); err != nil {
-			return false
+		f, err := os.OpenFile(address, os.O_RDWR, 0)
+		if err != nil {
+			// If the file doesn't exist, the printer is definitely off.
+			if os.IsNotExist(err) {
+				return false
+			}
+			// If the file exists but we can't open it (e.g., it's busy or permission denied),
+			// it's likely the printer is on but currently unavailable.
+			return true
 		}
+		f.Close()
 		return true
 	default:
 		return false

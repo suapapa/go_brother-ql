@@ -43,17 +43,17 @@ func NewLabelPrinter(model, backend, id string) (*LabelPrinter, error) {
 		return nil, fmt.Errorf("unknown model: %s", model)
 	}
 
-	conn, err := backends.Connect(backend, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to %s backend at %s: %v", backend, id, err)
-	}
-
-	return &LabelPrinter{
+	p := &LabelPrinter{
 		model:   model,
 		backend: backend,
 		id:      id,
-		conn:    conn,
-	}, nil
+	}
+
+	// Attempt initial connection, but don't fail if the printer is off.
+	// This allows the printer object to be created and used once it's powered on.
+	p.conn, _ = backends.Connect(backend, id)
+
+	return p, nil
 }
 
 // IsLive checks if the printer connection is available.
@@ -99,7 +99,20 @@ func (p *LabelPrinter) Print(images []image.Image, opts PrintOptions) error {
 		return err
 	}
 
+	if p.conn == nil {
+		if err := p.Reconnect(); err != nil {
+			return fmt.Errorf("printer not connected: %v", err)
+		}
+	}
+
 	_, err = p.conn.Write(data)
+	if err != nil {
+		// If write fails, try to reconnect and retry once.
+		if reconnectErr := p.Reconnect(); reconnectErr == nil {
+			_, err = p.conn.Write(data)
+		}
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to write data to printer: %v", err)
 	}
