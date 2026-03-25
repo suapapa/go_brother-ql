@@ -74,7 +74,9 @@ func (r *BrotherQLRaster) addRasterData(images ...image.Image) error {
 
 			if r.Model.Identifier[:2] == "PT" {
 				fileStr.WriteByte(0x47)
-				binary.Write(&fileStr, binary.LittleEndian, uint16(translen))
+				if err := binary.Write(&fileStr, binary.LittleEndian, uint16(translen)); err != nil {
+					return fmt.Errorf("failed to write PT translen: %w", err)
+				}
 			} else {
 				if len(images) > 1 {
 					if i == 0 {

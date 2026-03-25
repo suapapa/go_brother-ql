@@ -37,18 +37,6 @@ type Label struct {
 	Color              Color
 }
 
-func defaultLabel(id string, size [2]int, ff FormFactor, total [2]int, printable [2]int, offsetR int) Label {
-	return Label{
-		Identifier:    id,
-		TapeSize:      size,
-		FormFactor:    ff,
-		DotsTotal:     total,
-		DotsPrintable: printable,
-		OffsetR:       offsetR,
-		FeedMargin:    0,
-		Color:         BlackWhite,
-	}
-}
 
 func initLabels() []Label {
 	return []Label{

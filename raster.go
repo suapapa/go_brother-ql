@@ -38,35 +38,40 @@ func newBrotherQLRaster(modelId string) (*BrotherQLRaster, error) {
 	}, nil
 }
 
-func (r *BrotherQLRaster) addInitialize() {
+func (r *BrotherQLRaster) addInitialize() error {
 	r.pageNumber = 0
 	r.Data.Write([]byte{0x1B, 0x40}) // ESC @
+	return nil
 }
 
-func (r *BrotherQLRaster) addStatusInformation() {
+func (r *BrotherQLRaster) addStatusInformation() error {
 	r.Data.Write([]byte{0x1B, 0x69, 0x53}) // ESC i S
+	return nil
 }
 
-func (r *BrotherQLRaster) addSwitchMode() {
+func (r *BrotherQLRaster) addSwitchMode() error {
 	if !r.Model.ModeSetting {
 		r.warn("Trying to switch the operating mode on a printer that doesn't support the command.")
-		return
+		return nil
 	}
 	r.Data.Write([]byte{0x1B, 0x69, 0x61, 0x01}) // ESC i a
+	return nil
 }
 
-func (r *BrotherQLRaster) addInvalidate() {
+func (r *BrotherQLRaster) addInvalidate() error {
 	r.Data.Write(make([]byte, r.Model.NumInvalidateBytes))
+	return nil
 }
 
-func (r *BrotherQLRaster) setMedia(mtype, width, length byte, quality bool) {
+func (r *BrotherQLRaster) setMedia(mtype, width, length byte, quality bool) error {
 	r.mtype = &mtype
 	r.mwidth = &width
 	r.mlength = &length
 	r.pquality = quality
+	return nil
 }
 
-func (r *BrotherQLRaster) addMediaAndQuality(rnumber uint32) {
+func (r *BrotherQLRaster) addMediaAndQuality(rnumber uint32) error {
 	r.Data.Write([]byte{0x1B, 0x69, 0x7A})
 
 	validFlags := byte(0x80)
@@ -100,7 +105,9 @@ func (r *BrotherQLRaster) addMediaAndQuality(rnumber uint32) {
 		r.Data.WriteByte(0)
 	}
 
-	binary.Write(&r.Data, binary.LittleEndian, rnumber)
+	if err := binary.Write(&r.Data, binary.LittleEndian, rnumber); err != nil {
+		return fmt.Errorf("failed to write rnumber: %w", err)
+	}
 
 	if r.pageNumber == 0 {
 		r.Data.WriteByte(0)
@@ -108,12 +115,13 @@ func (r *BrotherQLRaster) addMediaAndQuality(rnumber uint32) {
 		r.Data.WriteByte(1)
 	}
 	r.Data.WriteByte(0)
+	return nil
 }
 
-func (r *BrotherQLRaster) addAutocut(autocut bool) {
+func (r *BrotherQLRaster) addAutocut(autocut bool) error {
 	if !r.Model.Cutting {
 		r.warn("Trying to call AddAutocut with a printer that doesn't support it")
-		return
+		return nil
 	}
 	r.Data.Write([]byte{0x1B, 0x69, 0x4D})
 	var val byte
@@ -121,21 +129,23 @@ func (r *BrotherQLRaster) addAutocut(autocut bool) {
 		val = 1 << 6
 	}
 	r.Data.WriteByte(val)
+	return nil
 }
 
-func (r *BrotherQLRaster) addCutEvery(n byte) {
+func (r *BrotherQLRaster) addCutEvery(n byte) error {
 	if !r.Model.Cutting {
 		r.warn("Trying to call AddCutEvery with a printer that doesn't support it")
-		return
+		return nil
 	}
 	r.Data.Write([]byte{0x1B, 0x69, 0x41})
 	r.Data.WriteByte(n)
+	return nil
 }
 
-func (r *BrotherQLRaster) addExpandedMode() {
+func (r *BrotherQLRaster) addExpandedMode() error {
 	if !r.Model.ExpandedMode {
 		r.warn("Trying to set expanded mode on a printer that doesn't support it")
-		return
+		return nil
 	}
 	r.Data.Write([]byte{0x1B, 0x69, 0x4B})
 	var flags byte
@@ -149,17 +159,21 @@ func (r *BrotherQLRaster) addExpandedMode() {
 		flags |= 1 << 0
 	}
 	r.Data.WriteByte(flags)
+	return nil
 }
 
-func (r *BrotherQLRaster) addMargins(dots uint16) {
+func (r *BrotherQLRaster) addMargins(dots uint16) error {
 	r.Data.Write([]byte{0x1B, 0x69, 0x64})
-	binary.Write(&r.Data, binary.LittleEndian, dots)
+	if err := binary.Write(&r.Data, binary.LittleEndian, dots); err != nil {
+		return fmt.Errorf("failed to write margins: %w", err)
+	}
+	return nil
 }
 
-func (r *BrotherQLRaster) addCompression(enable bool) {
+func (r *BrotherQLRaster) addCompression(enable bool) error {
 	if !r.Model.Compression {
 		r.warn("Trying to set compression on a printer that doesn't support it")
-		return
+		return nil
 	}
 	r.compression = enable
 	r.Data.WriteByte(0x4D) // M
@@ -168,14 +182,16 @@ func (r *BrotherQLRaster) addCompression(enable bool) {
 		val = 1 << 1
 	}
 	r.Data.WriteByte(val)
+	return nil
 }
 
-func (r *BrotherQLRaster) addPrint(lastPage bool) {
+func (r *BrotherQLRaster) addPrint(lastPage bool) error {
 	if lastPage {
 		r.Data.WriteByte(0x1A) // EOF
 	} else {
 		r.Data.WriteByte(0x0C) // Form Feed
 	}
+	return nil
 }
 
 func (r *BrotherQLRaster) getPixelWidth() int {
@@ -185,8 +201,5 @@ func (r *BrotherQLRaster) getPixelWidth() int {
 func (r *BrotherQLRaster) warn(msg string) {
 	if r.onWarning != nil {
 		r.onWarning(msg)
-	} else {
-		// Do nothing
-		// fmt.Println("Warning: " + msg)
 	}
 }

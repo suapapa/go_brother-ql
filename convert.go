@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"log"
+	"strconv"
 
 	"github.com/disintegration/imaging"
 	"github.com/lestrrat-go/dither"
@@ -46,10 +46,27 @@ func convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts Co
 
 	qlr.onWarning = opts.OnWarning
 
-	qlr.addSwitchMode()
-	qlr.addInvalidate()
-	qlr.addInitialize()
-	qlr.addSwitchMode()
+	if err := qlr.addSwitchMode(); err != nil {
+		return nil, fmt.Errorf("failed to add switch mode: %w", err)
+	}
+	if err := qlr.addInvalidate(); err != nil {
+		return nil, fmt.Errorf("failed to add invalidate: %w", err)
+	}
+	if err := qlr.addInitialize(); err != nil {
+		return nil, fmt.Errorf("failed to add initialize: %w", err)
+	}
+	if err := qlr.addSwitchMode(); err != nil {
+		return nil, fmt.Errorf("failed to add switch mode: %w", err)
+	}
+	if err := qlr.addInvalidate(); err != nil {
+		return nil, fmt.Errorf("failed to add invalidate: %w", err)
+	}
+	if err := qlr.addInitialize(); err != nil {
+		return nil, fmt.Errorf("failed to add initialize: %w", err)
+	}
+	if err := qlr.addSwitchMode(); err != nil {
+		return nil, fmt.Errorf("failed to add switch mode: %w", err)
+	}
 
 	for _, im := range images {
 		// Convert to Gray or RGB is handled by imaging
@@ -63,9 +80,12 @@ func convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts Co
 
 		if labelSpecs.FormFactor == Endless || labelSpecs.FormFactor == PtouchEndless {
 			if opts.Rotate != "auto" && opts.Rotate != "0" {
-				angle := 0
-				fmt.Sscanf(opts.Rotate, "%d", &angle)
-				processedIm = rotateImage(processedIm, angle)
+				angle, err := strconv.Atoi(opts.Rotate)
+				if err != nil {
+					qlr.warn(fmt.Sprintf("failed to parse rotate angle %q: %v", opts.Rotate, err))
+				} else {
+					processedIm = rotateImage(processedIm, angle)
+				}
 			}
 			if opts.Dpi600 {
 				sz := processedIm.Bounds().Size()
@@ -75,7 +95,7 @@ func convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts Co
 			if sz.X != dotsPrintable[0] {
 				hsize := int(float64(dotsPrintable[0]) / float64(sz.X) * float64(sz.Y))
 				processedIm = imaging.Resize(processedIm, dotsPrintable[0], hsize, imaging.Lanczos)
-				log.Println("Need to resize the image...")
+				qlr.warn("Need to resize the image...")
 			}
 			if processedIm.Bounds().Dx() < devicePixelWidth {
 				bg := imaging.New(devicePixelWidth, processedIm.Bounds().Dy(), color.White)
@@ -89,9 +109,12 @@ func convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts Co
 					processedIm = imaging.Rotate90(processedIm)
 				}
 			} else if opts.Rotate != "0" && opts.Rotate != "" {
-				angle := 0
-				fmt.Sscanf(opts.Rotate, "%d", &angle)
-				processedIm = rotateImage(processedIm, angle)
+				angle, err := strconv.Atoi(opts.Rotate)
+				if err != nil {
+					qlr.warn(fmt.Sprintf("failed to parse rotate angle %q: %v", opts.Rotate, err))
+				} else {
+					processedIm = rotateImage(processedIm, angle)
+				}
 			}
 			sz := processedIm.Bounds().Size()
 			if sz.X != dotsExpected[0] || sz.Y != dotsExpected[1] {
@@ -112,33 +135,57 @@ func convert(qlr *BrotherQLRaster, images []image.Image, labelId string, opts Co
 			binIm = binarizeImage(processedIm, opts.Threshold)
 		}
 
-		qlr.addStatusInformation()
-		if labelSpecs.FormFactor == DieCut || labelSpecs.FormFactor == RoundDieCut {
-			qlr.setMedia(0x0B, byte(labelSpecs.TapeSize[0]), byte(labelSpecs.TapeSize[1]), opts.Hq)
-		} else if labelSpecs.FormFactor == Endless {
-			qlr.setMedia(0x0A, byte(labelSpecs.TapeSize[0]), 0, opts.Hq)
-		} else if labelSpecs.FormFactor == PtouchEndless {
-			qlr.setMedia(0x00, byte(labelSpecs.TapeSize[0]), 0, opts.Hq)
+		if err := qlr.addStatusInformation(); err != nil {
+			return nil, fmt.Errorf("failed to add status information: %w", err)
 		}
-		qlr.addMediaAndQuality(uint32(binIm.Bounds().Dy()))
+		if labelSpecs.FormFactor == DieCut || labelSpecs.FormFactor == RoundDieCut {
+			if err := qlr.setMedia(0x0B, byte(labelSpecs.TapeSize[0]), byte(labelSpecs.TapeSize[1]), opts.Hq); err != nil {
+				return nil, fmt.Errorf("failed to set media for die-cut: %w", err)
+			}
+		} else if labelSpecs.FormFactor == Endless {
+			if err := qlr.setMedia(0x0A, byte(labelSpecs.TapeSize[0]), 0, opts.Hq); err != nil {
+				return nil, fmt.Errorf("failed to set media for endless: %w", err)
+			}
+		} else if labelSpecs.FormFactor == PtouchEndless {
+			if err := qlr.setMedia(0x00, byte(labelSpecs.TapeSize[0]), 0, opts.Hq); err != nil {
+				return nil, fmt.Errorf("failed to set media for ptouch endless: %w", err)
+			}
+		}
+		if err := qlr.addMediaAndQuality(uint32(binIm.Bounds().Dy())); err != nil {
+			return nil, fmt.Errorf("failed to add media/quality: %w", err)
+		}
 
 		if opts.Cut && qlr.Model.Cutting {
-			qlr.addAutocut(true)
-			qlr.addCutEvery(1)
+			if err := qlr.addAutocut(true); err != nil {
+				return nil, fmt.Errorf("failed to add autocut: %w", err)
+			}
+			if err := qlr.addCutEvery(1); err != nil {
+				return nil, fmt.Errorf("failed to add cut every: %w", err)
+			}
 		}
 
 		qlr.CutAtEnd = opts.Cut
 		qlr.Dpi600 = opts.Dpi600
 		qlr.TwoColorPrinting = opts.Red
-		qlr.addExpandedMode()
-
-		qlr.addMargins(uint16(labelSpecs.FeedMargin))
-		if opts.Compress && qlr.Model.Compression {
-			qlr.addCompression(true)
+		if err := qlr.addExpandedMode(); err != nil {
+			return nil, fmt.Errorf("failed to add expanded mode: %w", err)
 		}
 
-		qlr.addRasterData(binIm)
-		qlr.addPrint(true) // Wait, for multiples images we might need false then true on last
+		if err := qlr.addMargins(uint16(labelSpecs.FeedMargin)); err != nil {
+			return nil, fmt.Errorf("failed to add margins: %w", err)
+		}
+		if opts.Compress && qlr.Model.Compression {
+			if err := qlr.addCompression(true); err != nil {
+				return nil, fmt.Errorf("failed to add compression: %w", err)
+			}
+		}
+
+		if err := qlr.addRasterData(binIm); err != nil {
+			return nil, fmt.Errorf("failed to add raster data: %w", err)
+		}
+		if err := qlr.addPrint(true); err != nil { // Wait, for multiples images we might need false then true on last
+			return nil, fmt.Errorf("failed to add print command: %w", err)
+		}
 	}
 
 	return qlr.Data.Bytes(), nil

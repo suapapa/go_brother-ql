@@ -3,3 +3,5 @@
 .ref/
 .example_labels/
 brother_ql
+.agents/
+skills-lock.json

@@ -1,6 +1,7 @@
 package brother_ql
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"io"
@@ -37,8 +38,10 @@ type LabelPrinter struct {
 	conn    io.ReadWriteCloser
 }
 
-// NewLabelPrinter creates a new LabelPrinter.
-func NewLabelPrinter(model, backend, id string) (*LabelPrinter, error) {
+// NewLabelPrinter creates a new LabelPrinter. It attempts an initial connection
+// but does not return an error if the connection fails (e.g., printer is off),
+// allowing the printer object to be used once it's powered on.
+func NewLabelPrinter(ctx context.Context, model, backend, id string) (*LabelPrinter, error) {
 	if _, ok := getModel(model); !ok {
 		return nil, fmt.Errorf("unknown model: %s", model)
 	}
@@ -50,33 +53,33 @@ func NewLabelPrinter(model, backend, id string) (*LabelPrinter, error) {
 	}
 
 	// Attempt initial connection, but don't fail if the printer is off.
-	// This allows the printer object to be created and used once it's powered on.
-	p.conn, _ = backends.Connect(backend, id)
+	// We use the provided context for the initial attempt.
+	p.conn, _ = backends.Connect(ctx, backend, id)
 
 	return p, nil
 }
 
 // IsLive checks if the printer connection is available.
-func (p *LabelPrinter) IsLive() bool {
-	return backends.IsLive(p.backend, p.id)
+func (p *LabelPrinter) IsLive(ctx context.Context) bool {
+	return backends.IsLive(ctx, p.backend, p.id)
 }
 
 // Reconnect attempts to re-establish the connection to the printer.
-func (p *LabelPrinter) Reconnect() error {
+func (p *LabelPrinter) Reconnect(ctx context.Context) error {
 	if p.conn != nil {
 		p.conn.Close()
 	}
 
-	conn, err := backends.Connect(p.backend, p.id)
+	conn, err := backends.Connect(ctx, p.backend, p.id)
 	if err != nil {
-		return err
+		return fmt.Errorf("reconnect failed: %w", err)
 	}
 	p.conn = conn
 	return nil
 }
 
-
-// Close closes the connection to the printer.
+// Close closes the connection to the printer after a short delay to allow
+// the printer to process buffered commands.
 func (p *LabelPrinter) Close() error {
 	if p.conn != nil {
 		// Give the printer some time to process or buffer the cut command
@@ -88,37 +91,39 @@ func (p *LabelPrinter) Close() error {
 }
 
 // Print converts and sends the images to the printer.
-func (p *LabelPrinter) Print(images []image.Image, opts PrintOptions) error {
+func (p *LabelPrinter) Print(ctx context.Context, images []image.Image, opts PrintOptions) error {
 	qlr, err := newBrotherQLRaster(p.model)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to initialize raster: %w", err)
 	}
 
 	data, err := convert(qlr, images, opts.Label, opts.ConvertOptions)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to convert images: %w", err)
 	}
 
 	if p.conn == nil {
-		if err := p.Reconnect(); err != nil {
-			return fmt.Errorf("printer not connected: %v", err)
+		if err := p.Reconnect(ctx); err != nil {
+			return fmt.Errorf("printer not connected: %w", err)
 		}
 	}
 
 	_, err = p.conn.Write(data)
 	if err != nil {
 		// If write fails, try to reconnect and retry once.
-		if reconnectErr := p.Reconnect(); reconnectErr == nil {
+		if reconnectErr := p.Reconnect(ctx); reconnectErr == nil {
 			_, err = p.conn.Write(data)
 		}
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to write data to printer: %v", err)
+		return fmt.Errorf("failed to write data to printer: %w", err)
 	}
 
 	if f, ok := p.conn.(*os.File); ok {
-		f.Sync()
+		if err := f.Sync(); err != nil {
+			return fmt.Errorf("failed to sync file: %w", err)
+		}
 	}
 
 	return nil

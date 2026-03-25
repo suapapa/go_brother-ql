@@ -46,5 +46,11 @@ The code is partitioned across a small set of files in the main package with a s
 3. **Backend limits**:
     - Respect the restriction to only allow simple byte write-triggers to standard endpoints. Do not enforce heavier dependencies that the Python library had (libusb).
 
-4. **Maintain Documentation**:
+4. **Context and Concurrency**:
+    - Pass `context.Context` to all high-level methods (`Print`, `Reconnect`) and backend operations. Use it for timeouts and cancellation.
+
+5. **Error Handling**:
+    - Wrap all errors with `fmt.Errorf("%w", err)` to preserve causality. NEVER ignore errors (no `_` assignments) when calling library or system functions.
+
+6. **Maintain Documentation**:
     - Whenever you make modifications to the code, check if high-level structures, CLI behaviors, or backend supports have shifted. If so, you **MUST** update both `AGENT.md` and `README.md` to reflect those changes instantly to keep context up-to-date for future workflows.

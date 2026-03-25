@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"image"
 	_ "image/jpeg"
@@ -108,9 +109,9 @@ func main() {
 	var printCmd = &cobra.Command{
 		Use:   "print [IMAGE ...]",
 		Short: "Print a label",
-		Args:  cobra.MinimumNArgs(1),
+			Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			runPrint(args, labelArg, rotate, threshold, dither, ditherAlgo, compress, red, dpi600, hq, noCut)
+			runPrint(cmd.Context(), args, labelArg, rotate, threshold, dither, ditherAlgo, compress, red, dpi600, hq, noCut)
 		},
 	}
 	printCmd.Flags().StringVarP(&labelArg, "label", "l", os.Getenv("BROTHER_QL_LABEL"), "The label size")
@@ -152,7 +153,7 @@ func discoverAndList(backend string) {
 	}
 }
 
-func runPrint(images []string, label, rotate string, threshold float64, dither bool, ditherAlgo string, compress, red, dpi600, hq, noCut bool) {
+func runPrint(ctx context.Context, images []string, label, rotate string, threshold float64, dither bool, ditherAlgo string, compress, red, dpi600, hq, noCut bool) {
 	var parsedImages []image.Image
 	for _, imgPath := range images {
 		f, err := os.Open(imgPath)
@@ -160,8 +161,8 @@ func runPrint(images []string, label, rotate string, threshold float64, dither b
 			fmt.Printf("Error opening image %s: %v\n", imgPath, err)
 			return
 		}
-		defer f.Close()
 		img, _, err := image.Decode(f)
+		f.Close()
 		if err != nil {
 			fmt.Printf("Error decoding image %s: %v\n", imgPath, err)
 			return
@@ -174,7 +175,7 @@ func runPrint(images []string, label, rotate string, threshold float64, dither b
 		return
 	}
 
-	brd, err := brother_ql.NewLabelPrinter(model, backend, printer)
+	brd, err := brother_ql.NewLabelPrinter(ctx, model, backend, printer)
 	if err != nil {
 		fmt.Println("Error creating printer:", err)
 		return
@@ -196,7 +197,7 @@ func runPrint(images []string, label, rotate string, threshold float64, dither b
 		},
 	}
 
-	if err := brd.Print(parsedImages, opts); err != nil {
+	if err := brd.Print(ctx, parsedImages, opts); err != nil {
 		fmt.Println("Error printing:", err)
 		return
 	}

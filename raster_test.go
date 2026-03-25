@@ -12,7 +12,9 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	}
 
 	// Test addInitialize
-	r.addInitialize()
+	if err := r.addInitialize(); err != nil {
+		t.Errorf("addInitialize() failed: %v", err)
+	}
 	want := []byte{0x1B, 0x40}
 	if !bytes.Equal(r.Data.Bytes(), want) {
 		t.Errorf("addInitialize() = %v, want %v", r.Data.Bytes(), want)
@@ -20,7 +22,9 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	r.Data.Reset()
 
 	// Test addStatusInformation
-	r.addStatusInformation()
+	if err := r.addStatusInformation(); err != nil {
+		t.Errorf("addStatusInformation() failed: %v", err)
+	}
 	want = []byte{0x1B, 0x69, 0x53}
 	if !bytes.Equal(r.Data.Bytes(), want) {
 		t.Errorf("addStatusInformation() = %v, want %v", r.Data.Bytes(), want)
@@ -28,7 +32,9 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	r.Data.Reset()
 
 	// Test addSwitchMode
-	r.addSwitchMode()
+	if err := r.addSwitchMode(); err != nil {
+		t.Errorf("addSwitchMode() failed: %v", err)
+	}
 	want = []byte{0x1B, 0x69, 0x61, 0x01}
 	if !bytes.Equal(r.Data.Bytes(), want) {
 		t.Errorf("addSwitchMode() = %v, want %v", r.Data.Bytes(), want)
@@ -36,15 +42,21 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	r.Data.Reset()
 
 	// Test addInvalidate
-	r.addInvalidate()
+	if err := r.addInvalidate(); err != nil {
+		t.Errorf("addInvalidate() failed: %v", err)
+	}
 	if len(r.Data.Bytes()) != r.Model.NumInvalidateBytes {
 		t.Errorf("addInvalidate() length = %d, want %d", len(r.Data.Bytes()), r.Model.NumInvalidateBytes)
 	}
 	r.Data.Reset()
 
 	// Test setMedia and addMediaAndQuality
-	r.setMedia(11, 62, 0, true)
-	r.addMediaAndQuality(0)
+	if err := r.setMedia(11, 62, 0, true); err != nil {
+		t.Errorf("setMedia() failed: %v", err)
+	}
+	if err := r.addMediaAndQuality(0); err != nil {
+		t.Errorf("addMediaAndQuality() failed: %v", err)
+	}
 	want = []byte{0x1B, 0x69, 0x7A, 0xCE, 11, 62, 0, 0, 0, 0, 0, 0, 0}
 	if !bytes.Equal(r.Data.Bytes(), want) {
 		t.Errorf("addMediaAndQuality() = %x, want %x", r.Data.Bytes(), want)
@@ -52,7 +64,9 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	r.Data.Reset()
 
 	// Test addAutocut
-	r.addAutocut(true)
+	if err := r.addAutocut(true); err != nil {
+		t.Errorf("addAutocut() failed: %v", err)
+	}
 	want = []byte{0x1B, 0x69, 0x4D, 0x40}
 	if !bytes.Equal(r.Data.Bytes(), want) {
 		t.Errorf("addAutocut(true) = %x, want %x", r.Data.Bytes(), want)
@@ -60,7 +74,9 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	r.Data.Reset()
 
 	// Test addCutEvery
-	r.addCutEvery(3)
+	if err := r.addCutEvery(3); err != nil {
+		t.Errorf("addCutEvery() failed: %v", err)
+	}
 	want = []byte{0x1B, 0x69, 0x41, 0x03}
 	if !bytes.Equal(r.Data.Bytes(), want) {
 		t.Errorf("addCutEvery() = %x, want %x", r.Data.Bytes(), want)
@@ -71,7 +87,9 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	r.CutAtEnd = true
 	r.Dpi600 = true
 	r.TwoColorPrinting = false
-	r.addExpandedMode()
+	if err := r.addExpandedMode(); err != nil {
+		t.Errorf("addExpandedMode() failed: %v", err)
+	}
 	want = []byte{0x1B, 0x69, 0x4B, 0x48}
 	if !bytes.Equal(r.Data.Bytes(), want) {
 		t.Errorf("addExpandedMode() = %x, want %x", r.Data.Bytes(), want)
@@ -79,7 +97,9 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	r.Data.Reset()
 
 	// Test addMargins
-	r.addMargins(35)
+	if err := r.addMargins(35); err != nil {
+		t.Errorf("addMargins() failed: %v", err)
+	}
 	want = []byte{0x1B, 0x69, 0x64, 0x23, 0x00}
 	if !bytes.Equal(r.Data.Bytes(), want) {
 		t.Errorf("addMargins() = %x, want %x", r.Data.Bytes(), want)
@@ -87,7 +107,9 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	r.Data.Reset()
 
 	// Test addCompression
-	r.addCompression(true)
+	if err := r.addCompression(true); err != nil {
+		t.Errorf("addCompression() failed: %v", err)
+	}
 	want = []byte{0x4D, 0x02}
 	if !bytes.Equal(r.Data.Bytes(), want) {
 		t.Errorf("addCompression() = %x, want %x", r.Data.Bytes(), want)
@@ -95,14 +117,15 @@ func TestBrotherQLRaster_Commands(t *testing.T) {
 	r.Data.Reset()
 
 	// Test addPrint
-	r.addPrint(true)
+	if err := r.addPrint(true); err != nil {
+		t.Errorf("addPrint() failed: %v", err)
+	}
 	want = []byte{0x1A}
 	if !bytes.Equal(r.Data.Bytes(), want) {
 		t.Errorf("addPrint(true) = %x, want %x", r.Data.Bytes(), want)
 	}
 	r.Data.Reset()
 }
-
 
 func TestBrotherQLRaster_OnWarning(t *testing.T) {
 	r, err := newBrotherQLRaster("QL-500")
@@ -115,7 +138,9 @@ func TestBrotherQLRaster_OnWarning(t *testing.T) {
 		warningMsg = msg
 	}
 
-	r.addCompression(true)
+	if err := r.addCompression(true); err != nil {
+		t.Errorf("addCompression() failed: %v", err)
+	}
 
 	if warningMsg == "" {
 		t.Fatalf("expected warning callback to be called")
