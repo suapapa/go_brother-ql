@@ -120,10 +120,13 @@ func (p *LabelPrinter) Print(ctx context.Context, images []image.Image, opts Pri
 		return fmt.Errorf("failed to write data to printer: %w", err)
 	}
 
+	// Character devices (like /dev/usb/lpX) may return EINVAL on fsync.
+	// Since write flush is sufficient, we can ignore the Sync entirely
+	// or specifically ignore syscall.EINVAL, but simply avoiding Sync is safer.
 	if f, ok := p.conn.(*os.File); ok {
-		if err := f.Sync(); err != nil {
-			return fmt.Errorf("failed to sync file: %w", err)
-		}
+		// Just a no-op to keep the type assertion if ever needed,
+		// but we do not call f.Sync() anymore.
+		_ = f
 	}
 
 	return nil
